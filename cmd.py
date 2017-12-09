@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+from astropy.table import Table
 
 plt.rcParams['legend.numpoints'] = 1
 plt.rcParams['text.usetex'] = True
@@ -46,21 +46,21 @@ def mag2Mag(mag, filterx, photsys, Av=0., dmod=0.):
 
 def parse_mag_tab(photsys, filt):
     """return Alambda/Av for a filter given the photsys -- need the file!"""
-    tab_mag = 'tab_mag_{:s}.dat'.format(photsys)
+    tab_mag = './data/tab_mag_{:s}.dat'.format(photsys)
     tab = open(tab_mag, 'r').readlines()
     mags = tab[1].strip().split()
     Alam_Av = np.array(tab[3].strip().split(), dtype=float)
     return Alam_Av[mags.index(filt)]
 
 
-def annotations():
+def annotations(jwst=False):
     """Add text annotations and arrows to plot"""
     # Note: y values are in mags and converted to Abs Mag
     # Milky Way foreground
 
     red = '#FF0013'  # used for HB, RC
     orange = '#FF8C00'  # used for AGB
-    blue = '#0EA5FF'  # used for MS
+    blue = 'navy'  # used for MS
     green = '#138A00'  # used for HeB
     tcolor = 'k'  # used for TRGB
     ccolor = 'k'  # used for MW, Galaxies
@@ -74,8 +74,12 @@ def annotations():
                 xy=(0.72, m2M(18)), xytext=(0.9, m2M(17.1)),
                 color=ccolor, arrowprops=coolarrow(ccolor),
                 size=size, **emboss())
+    if jwst:
+        xytext=(1.8, 2.46)
+    else:
+        xytext=(1.3, m2M(22))
     ax.annotate(r'$\rm{Galaxies}$',
-                xy=(1.5, m2M(20)), xytext=(1.3, m2M(22)),
+                xy=(1.5, m2M(20)), xytext=xytext,
                 color=ccolor, arrowprops=coolarrow(ccolor),
                 size=size, **emboss())
     ax.annotate(r'$\rm{MS}$',
@@ -110,24 +114,66 @@ def annotations():
                 xy=(2.5, m2M(10.5)), xytext=(2., m2M(9)),
                 color=orange, arrowprops=coolarrow(orange),
                 size=size, **emboss())
-
+    if jwst:
+        # WD label
+        ax.annotate(r'$\rm{WD}$', xy=(-0.22, 10.3), xytext=(-0.14, 6.7),
+                    color='#0EA5FF', arrowprops=coolarrow('#0EA5FF'),
+                    size=size, **emboss())
+        # BD label
+        ax.annotate(r'$\rm{BD}$', xy=(0.77, 8.54), xytext=(0.95, 9.),
+                    color='darkred', arrowprops=coolarrow('darkred'),
+                    size=size, **emboss())
+        # MS Kink ~5
+        ax.annotate(r'$\rm{MS\ Kink}$', xy=(0.85, 5.3), xytext=(1., 4.75),
+                    color='darkred', arrowprops=coolarrow('darkred'),
+                    size=size, **emboss())
     # Distance lines
     # x is padded x limint
     x = ax.get_xlim()[1] - 0.02
     kw = {'color': 'k', 'size': size, 'va': 'bottom', 'ha': 'right'}
     lkw = {'color': 'k', 'alpha': 0.4, 'lw': 1}
 
-    ax.annotate(r'$10\ \rm{Mpc}$', (x, -3), **kw)
-    ax.axhline(-3, **lkw)
+    if not jwst:
+        tenmpc = -3
+        fourmpc = -1
+        onempc = 2
+        onefiftykpc = 6
+    else:
+        # From Jason: This Figure appears to be made for the rough F200W = 29
+        # (AB mag) limit that JWST reaches in 10,000s (3 hours).
+        # For the figure in the paper, I’d like to show cases that are a bit
+        # deeper than this...more like 10 or 20 hours.  That will give us ~1
+        # magnitude of depth.  For F200W = 30 (AB mag), the K (vega mag) will
+        # be 28.2.
+        tenmpc = -1.8
+        fourmpc = 0.19
+        onempc = 3.2
+        onefiftykpc = 7.32
+        fiftympc = -5.3
+        fivekpc = 14.71
 
-    ax.annotate(r'$4\ \rm{Mpc}$', (x, -1), **kw)
-    ax.axhline(-1, **lkw)
+    ax.annotate(r'$10\ \rm{Mpc}$', (x, tenmpc), **kw)
+    ax.axhline(tenmpc, **lkw)
 
-    ax.annotate(r'$1\ \rm{Mpc}$', (x, 2), **kw)
-    ax.axhline(2, **lkw)
+    ax.annotate(r'$4\ \rm{Mpc}$', (x, fourmpc), **kw)
+    ax.axhline(fourmpc, **lkw)
 
-    ax.annotate(r'$\rm{Galactic\ Satellites}$', (x, 6), **kw)
-    ax.axhline(6, **lkw)
+    ax.annotate(r'$1\ \rm{Mpc}$', (x, onempc), **kw)
+    ax.axhline(onempc, **lkw)
+
+    ax.axhline(onefiftykpc, **lkw)
+
+    if not jwst:
+        ax.annotate(r'$\rm{Galactic\ Satellites}$', (x, mwsats), **kw)
+    else:
+        ax.annotate(r'$\rm{MW\ Satellites}$', (x, onefiftykpc), **kw)
+
+        ax.annotate(r'$50\ \rm{Mpc}$', (x, fiftympc), **kw)
+        ax.axhline(fiftympc, **lkw)
+
+        ax.annotate(r'$\rm{Nearby\ Clusters}$', (x, fivekpc), **kw)
+        ax.axhline(fivekpc, **lkw)
+
     return ax
 
 
@@ -143,7 +189,6 @@ def loadvmc(inputfile, testphase=False):
 
 
 def loadsim(inputfile):
-    from astropy.table import Table
     sgal = Table.read(inputfile, format='ascii.commented_header', guess=False)
     inds, = np.nonzero(sgal['stage'] >= 1)
     smag = mag2Mag(sgal['Ks'][inds], 'Ks', 'vista', dmod=dmod, Av=Av)
@@ -159,6 +204,21 @@ def load2mass(inputfile):
     dmag = mag2Mag(dat['Kmag'], 'Ks', '2mass', dmod=dmod, Av=Av)
     dcor = mag1 - dmag
     return dcor, dmag
+
+def loadwd(inputfile):
+    dat = Table.read(inputfile, format='ascii')
+    mag1 = mag2Mag(dat['J'], 'J', '2mass', dmod=0., Av=Av)
+    dmag = mag2Mag(dat['K'], 'Ks', '2mass', dmod=0., Av=Av)
+    dcor = mag1 - dmag
+    return dcor, dmag
+
+def loadms(inputfile):
+    dat = Table.read(inputfile, format='ascii')
+    mag1 = mag2Mag(dat['F115W_NRC'], 'J', '2mass', dmod=0., Av=Av)
+    dmag = mag2Mag(dat['F200W_NRC'], 'Ks', '2mass', dmod=0., Av=Av)
+    dcor = mag1 - dmag
+    return dcor - 0.11 , dmag - 0.23
+
 
 
 def hist2d(vcor, vmag, ax):
@@ -215,52 +275,66 @@ def plothist(mag, ax, norm=1, bins=None, alpha=1, findnorm=False):
 
 
 # Globals
+jwst = True
 dmod = 18.493
 Av = 0.04
 
-vcor, vmag = loadvmc('ADP.2011-09-22T15:44:49.967.fits')
-tcor, tmag = load2mass('asu.fit')
-scor, smag = loadsim('wfirstsm.dat')
+# Data
+vcor, vmag = loadvmc('./data/ADP.2011-09-22T15:44:49.967.fits')
+tcor, tmag = load2mass('./data/asu.fit')
 
 fig, ax = plt.subplots(figsize=(5., 3.75))
-# ax.set_rasterization_zorder(2)  # elements with zorder<2 will be rasterized
-# ax.set_title(r'LMC: 1.5 sqrdeg, outer NE field')
 
+# Vista data
 ax = hist2d(vcor, vmag, ax)
 
+# 2mass data
 ax.plot(tcor[tmag < m2M(12, p='2mass')], tmag[tmag < m2M(12, p='2mass')], '.',
         c='black', markersize=0.4, zorder=0)
 
-ax.plot(scor[smag > m2M(10)], smag[smag > m2M(10)], '.',
+if not jwst:
+    scor, smag = loadsim('./data/wfirstsm.dat')
+    ax.plot(scor[smag > m2M(10)], smag[smag > m2M(10)], '.',
         c='grey', markersize=0.4, zorder=0, alpha=0.3)
+    divider = make_axes_locatable(ax)
+    ax1 = divider.append_axes("right", 1., pad=0, sharey=ax)
 
-annotations()
+    # Iterated to find best normalization (arb mass simulation)...
+    norm = 20269 / 893.
+    bins = np.arange(1.8, smag.max(), 0.1)
 
-divider = make_axes_locatable(ax)
-ax1 = divider.append_axes("right", 1., pad=0, sharey=ax)
+    ax1 = plothist(smag, ax1, norm=norm, bins=bins, alpha=0.4, findnorm=False)
 
-# Iterated to find best normalization (arb mass simulation)...
-norm = 20269 / 893.
-bins = np.arange(1.8, smag.max(), 0.1)
+    # Cut MW and Galaxies from LF
+    verts = [[-0.5, 6.5], [-0.5, m2M(12)], [3, m2M(12)],
+             [3, -2.9], [.65, -2.9], [0.65, 6.5], [-0.5, 6.5]]
 
-ax1 = plothist(smag, ax1, norm=norm, bins=bins, alpha=0.4, findnorm=False)
+    inds = points_inside_poly(np.column_stack([vcor, vmag]), verts)
 
-# Cut MW and Galaxies from LF
-verts = [[-0.5, 6.5], [-0.5, m2M(12)], [3, m2M(12)],
-         [3, -2.9], [.65, -2.9], [0.65, 6.5], [-0.5, 6.5]]
+    ax1 = plothist(vmag[inds], ax1)
+    ax1 = plothist(tmag[[tmag <= m2M(12.1, p='2mass')]], ax1)
+    ax1.tick_params(labelleft=False, labelsize=10)
+    ax1.set_xlim(10, ax1.get_xlim()[1])
+    ax1.set_xscale('log')
+    ax.set_ylim(6.5, ax.get_ylim()[1])
+    ax.set_ylabel(r'$K_{\rm{s}}$')
+else:
+    # WD Cooling curve
+    wcor, wmag = loadwd('./data/Table_Mass_0.5.dat.5')
+    ax.plot(wcor, wmag, c='#0EA5FF', lw=2.3)
 
-inds = points_inside_poly(np.column_stack([vcor, vmag]), verts)
+    # MS and Brown dwarfs
+    bcor, bmag = loadms('./data/all47comp11.data')
+    ax.plot(bcor[bmag > 1], bmag[bmag > 1], c='darkred', lw=2.3, zorder=0)
 
-ax1 = plothist(vmag[inds], ax1)
-ax1 = plothist(tmag[[tmag <= m2M(12.1, p='2mass')]], ax1)
+    ax.set_ylabel(r'$K_{\rm{s}}\ \rm{(Vega\ mag)}$')
+    ax.set_ylim(15., -11)
+
+annotations(jwst=jwst)
 
 ax.set_xlabel(r'$J-K_{\rm{s}}$')
-ax.set_ylabel(r'$K_{\rm{s}}$')
 
 ax.tick_params(labelsize=10)
-ax1.tick_params(labelleft=False, labelsize=10)
-ax1.set_xlim(10, ax1.get_xlim()[1])
-ax1.set_xscale('log')
-ax.set_ylim(6.5, ax.get_ylim()[1])
+
 fig.subplots_adjust(hspace=0.0, wspace=0.0)
 plt.savefig('vmc_sep.png', bbox_inches='tight', dpi=300)
