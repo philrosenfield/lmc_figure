@@ -116,17 +116,17 @@ def annotations(jwst=False):
                 size=size, **emboss())
     if jwst:
         # WD label
-        ax.annotate(r'$\rm{WD}$', xy=(-0.22, 10.3), xytext=(-0.14, 6.7),
+        ax.annotate(r'$\rm{WD}$', xy=(-0.2, 9.), xytext=(0, 9.),
                     color='#0EA5FF', arrowprops=coolarrow('#0EA5FF'),
-                    size=size, **emboss())
+                    size=size, **emboss(), va='center')
         # BD label
-        ax.annotate(r'$\rm{BD}$', xy=(0.77, 8.54), xytext=(0.95, 9.),
+        ax.annotate(r'$\rm{BD}$', xy=(0.77, 9.), xytext=(1.1, 9.),
                     color='darkred', arrowprops=coolarrow('darkred'),
-                    size=size, **emboss())
+                    size=size, **emboss(), va='center')
         # MS Kink ~5
-        ax.annotate(r'$\rm{MS\ Kink}$', xy=(0.85, 5.3), xytext=(1., 4.75),
+        ax.annotate(r'$\rm{MS\ Kink}$', xy=(0.85, 5.), xytext=(1.1, 5.),
                     color='darkred', arrowprops=coolarrow('darkred'),
-                    size=size, **emboss())
+                    size=size, **emboss(), va='center')
     # Distance lines
     # x is padded x limint
     x = ax.get_xlim()[1] - 0.02
@@ -328,7 +328,7 @@ else:
     ax.plot(bcor[bmag > 1], bmag[bmag > 1], c='darkred', lw=2.3, zorder=0)
 
     ax.set_ylabel(r'$K_{\rm{s}}\ \rm{(Vega\ mag)}$')
-    ax.set_ylim(15., -11)
+    ax.set_ylim(16., -11)
 
 annotations(jwst=jwst)
 
